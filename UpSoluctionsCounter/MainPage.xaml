@@ -64,9 +64,16 @@
                                     <Label Grid.Column="0" Text="{Binding Code}" 
                                           FontSize="14" TextColor="#2c3e50" 
                                           VerticalOptions="Center"/>
-                                    <Label Grid.Column="1" Text="{Binding Quantity, StringFormat='Qtd: {0}'}" 
-                                          FontSize="14" FontAttributes="Bold" 
-                                          TextColor="#e74c3c" VerticalOptions="Center"/>
+
+                                    <!-- CORREÇÃO: Um único Grid para Qtd e valor -->
+                                    <Grid Grid.Column="1" ColumnDefinitions="Auto,Auto" ColumnSpacing="5">
+                                        <Label Grid.Column="0" Text="Qtd:" 
+                                              FontSize="14" TextColor="Black" 
+                                              VerticalOptions="Center"/>
+                                        <Label Grid.Column="1" Text="{Binding Quantity}" 
+                                              FontSize="14" FontAttributes="Bold" 
+                                              TextColor="#27ae60" VerticalOptions="Center"/>
+                                    </Grid>
                                 </Grid>
                             </Frame>
                         </DataTemplate>

@@ -28,6 +28,36 @@
     <Color x:Key="Gray900">#212121</Color>
     <Color x:Key="Gray950">#141414</Color>
 
+    <!-- Cores principais -->
+    <Color x:Key="PrimaryColor">#2c3e50</Color>
+    <Color x:Key="SecondaryColor">#34495e</Color>
+    <Color x:Key="AccentColor">#3498db</Color>
+
+    <!-- Cores de sucesso -->
+    <Color x:Key="SuccessColor">#27ae60</Color>
+    <Color x:Key="SuccessLightColor">#2ecc71</Color>
+
+    <!-- Cores de alerta -->
+    <Color x:Key="WarningColor">#f39c12</Color>
+    <Color x:Key="DangerColor">#e74c3c</Color>
+
+    <!-- Cores neutras -->
+    <Color x:Key="LightColor">#ecf0f1</Color>
+    <Color x:Key="DarkColor">#2c3e50</Color>
+    <Color x:Key="GrayColor">#7f8c8d</Color>
+    <Color x:Key="LightGrayColor">#bdc3c7</Color>
+
+    <!-- Cores de texto -->
+    <Color x:Key="TextPrimary">#2c3e50</Color>
+    <Color x:Key="TextSecondary">#34495e</Color>
+    <Color x:Key="TextLight">#7f8c8d</Color>
+    <Color x:Key="TextWhite">#FFFFFF</Color>
+
+    <!-- Cores de fundo -->
+    <Color x:Key="BackgroundLight">#f8f9fa</Color>
+    <Color x:Key="BackgroundWhite">#FFFFFF</Color>
+    <Color x:Key="BackgroundGray">#ecf0f1</Color>
+
     <SolidColorBrush x:Key="PrimaryBrush" Color="{StaticResource Primary}"/>
     <SolidColorBrush x:Key="SecondaryBrush" Color="{StaticResource Secondary}"/>
     <SolidColorBrush x:Key="TertiaryBrush" Color="{StaticResource Tertiary}"/>

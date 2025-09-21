@@ -2,7 +2,6 @@
 using UpSoluctionsCounter.Services;
 using UpSoluctionsCounter.ViewModels;
 using UpSoluctionsCounter;
-using SQLite;
 using UpSoluctionsCounter.Services.Interface;
 
 namespace UpSoluctionsCounter
