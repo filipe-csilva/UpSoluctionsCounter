@@ -1,8 +1,9 @@
 ﻿using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Text.Json;
 using System.Windows.Input;
 using UpSoluctionsCounter.Models;
 using UpSoluctionsCounter.Services;
-using System.Diagnostics;
 using UpSoluctionsCounter.Services.Interface;
 
 namespace UpSoluctionsCounter.ViewModels
@@ -173,12 +174,27 @@ namespace UpSoluctionsCounter.ViewModels
 
             try
             {
-                Debug.WriteLine($"[VM] Salvando contagem: {_currentCount.Name}");
-                Debug.WriteLine($"[VM] Produtos na contagem: {Products.Count}");
+                Debug.WriteLine("=== TENTATIVA DE SALVAMENTO ===");
 
                 _currentCount.SetProducts(new ObservableCollection<ProductItem>(Products));
 
+                // Primeira tentativa
                 var success = await _databaseService.SaveInventoryCountAsync(_currentCount);
+
+                if (!success)
+                {
+                    Debug.WriteLine("[VM] Primeira tentativa falhou, tentando abordagem alternativa...");
+
+                    // Segunda tentativa: criar uma nova contagem
+                    var newCount = new InventoryCount
+                    {
+                        Name = _currentCount.Name,
+                        CreatedDate = DateTime.Now
+                    };
+                    newCount.SetProducts(new ObservableCollection<ProductItem>(Products));
+
+                    success = await _databaseService.SaveInventoryCountAsync(newCount);
+                }
 
                 if (success)
                 {
@@ -188,13 +204,12 @@ namespace UpSoluctionsCounter.ViewModels
                 }
                 else
                 {
-                    await Application.Current.MainPage.DisplayAlert("❌ Erro", "Falha ao salvar contagem", "OK");
+                    await Application.Current.MainPage.DisplayAlert("❌ Erro", "Não foi possível salvar a contagem", "OK");
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[VM] Erro ao salvar contagem: {ex.Message}");
-                Debug.WriteLine($"[VM] Stack Trace: {ex.StackTrace}");
+                Debug.WriteLine($"[VM] ERRO: {ex.Message}");
                 await Application.Current.MainPage.DisplayAlert("❌ Erro", ex.Message, "OK");
             }
         }
@@ -261,6 +276,45 @@ namespace UpSoluctionsCounter.ViewModels
             {
                 Debug.WriteLine($"[VM] Erro ao excluir contagem: {ex.Message}");
                 await Application.Current.MainPage.DisplayAlert("Erro", "Falha ao excluir contagem", "OK");
+            }
+        }
+
+        // Adicione este método no MainViewModel
+        private async Task DebugSaveProcess()
+        {
+            try
+            {
+                Debug.WriteLine("=== DEBUG DO PROCESSO DE SALVAMENTO ===");
+                Debug.WriteLine($"Nome da contagem: {_currentCount.Name}");
+                Debug.WriteLine($"Quantidade de produtos: {Products.Count}");
+
+                // Verificar cada produto
+                foreach (var product in Products)
+                {
+                    Debug.WriteLine($"Produto: {product.Code}, Quantidade: {product.Quantity}");
+                }
+
+                // Testar a serialização
+                var testProducts = new ObservableCollection<ProductItem>(Products);
+                var testJson = JsonSerializer.Serialize(testProducts);
+                Debug.WriteLine($"JSON de teste: {testJson}");
+                Debug.WriteLine($"Tamanho do JSON: {testJson.Length} caracteres");
+
+                // Testar o banco com dados simples
+                var testCount = new InventoryCount
+                {
+                    Name = "TESTE_DEBUG",
+                    ProductsJson = "[{\"Code\":\"123\",\"Quantity\":10}]"
+                };
+
+                var testResult = await _databaseService.SaveInventoryCountAsync(testCount);
+                Debug.WriteLine($"Teste de salvamento: {testResult}");
+
+                Debug.WriteLine("=== FIM DO DEBUG ===");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[DEBUG] Erro no debug: {ex.Message}");
             }
         }
     }

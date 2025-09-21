@@ -10,7 +10,6 @@ namespace UpSoluctionsCounter.Services
     {
         private SQLiteAsyncConnection _database;
         private bool _initialized = false;
-        private SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
         public DatabaseService()
         {
@@ -21,17 +20,14 @@ namespace UpSoluctionsCounter.Services
             if (_initialized)
                 return;
 
-            await _semaphore.WaitAsync();
             try
             {
-                if (_initialized) return;
-
-                var databasePath = Path.Combine(FileSystem.AppDataDirectory, "inventory.db3");
+                var databasePath = Path.Combine(FileSystem.AppDataDirectory, "inventory_v2.db3");
                 Debug.WriteLine($"[DB] Caminho do banco: {databasePath}");
 
                 _database = new SQLiteAsyncConnection(databasePath);
 
-                // Criar tabela
+                // Criar tabela com configuração explícita
                 var result = await _database.CreateTableAsync<InventoryCount>();
                 Debug.WriteLine($"[DB] Tabela criada: {result}");
 
@@ -40,13 +36,8 @@ namespace UpSoluctionsCounter.Services
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[DB] Erro ao inicializar banco: {ex.Message}");
-                Debug.WriteLine($"[DB] StackTrace: {ex.StackTrace}");
+                Debug.WriteLine($"[DB] ERRO ao inicializar banco: {ex.Message}");
                 throw;
-            }
-            finally
-            {
-                _semaphore.Release();
             }
         }
 
@@ -56,11 +47,8 @@ namespace UpSoluctionsCounter.Services
 
             try
             {
-                Debug.WriteLine("[DB] Buscando todas as contagens...");
                 var counts = await _database.Table<InventoryCount>().ToListAsync();
                 Debug.WriteLine($"[DB] Encontradas {counts.Count} contagens");
-
-                // Ordenar manualmente
                 return counts.OrderByDescending(x => x.ModifiedDate ?? x.CreatedDate).ToList();
             }
             catch (Exception ex)
@@ -76,21 +64,9 @@ namespace UpSoluctionsCounter.Services
 
             try
             {
-                Debug.WriteLine($"[DB] Buscando contagem: {id}");
-                var count = await _database.Table<InventoryCount>()
+                return await _database.Table<InventoryCount>()
                     .Where(x => x.Id == id)
                     .FirstOrDefaultAsync();
-
-                if (count != null)
-                {
-                    Debug.WriteLine($"[DB] Contagem encontrada: {count.Name}");
-                }
-                else
-                {
-                    Debug.WriteLine($"[DB] Contagem não encontrada: {id}");
-                }
-
-                return count;
             }
             catch (Exception ex)
             {
@@ -107,42 +83,45 @@ namespace UpSoluctionsCounter.Services
             {
                 count.ModifiedDate = DateTime.Now;
 
-                Debug.WriteLine($"[DB] Salvando contagem: {count.Name}");
-                Debug.WriteLine($"[DB] ID: {count.Id}");
-
-                int result;
+                // Garantir que temos um ID válido
                 if (string.IsNullOrEmpty(count.Id) || count.Id == Guid.Empty.ToString())
                 {
                     count.Id = Guid.NewGuid().ToString();
-                    result = await _database.InsertAsync(count);
-                    Debug.WriteLine($"[DB] INSERT result: {result}");
+                    Debug.WriteLine($"[DB] Inserindo nova contagem: {count.Id}");
+
+                    var result = await _database.InsertAsync(count);
+                    Debug.WriteLine($"[DB] Insert result: {result}");
+
+                    return result == 1; // SQLite retorna 1 para inserção bem-sucedida
                 }
                 else
                 {
-                    result = await _database.UpdateAsync(count);
-                    Debug.WriteLine($"[DB] UPDATE result: {result}");
-                }
+                    Debug.WriteLine($"[DB] Atualizando contagem existente: {count.Id}");
 
-                return result > 0;
+                    // Primeiro verificar se existe
+                    var existing = await _database.Table<InventoryCount>()
+                        .Where(x => x.Id == count.Id)
+                        .FirstOrDefaultAsync();
+
+                    if (existing != null)
+                    {
+                        var result = await _database.UpdateAsync(count);
+                        Debug.WriteLine($"[DB] Update result: {result}");
+                        return result == 1; // SQLite retorna 1 para update bem-sucedido
+                    }
+                    else
+                    {
+                        // Se não existe, insere como novo
+                        var result = await _database.InsertAsync(count);
+                        Debug.WriteLine($"[DB] Insert (fallback) result: {result}");
+                        return result == 1;
+                    }
+                }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[DB] ERRO ao salvar contagem: {ex.Message}");
-                Debug.WriteLine($"[DB] StackTrace: {ex.StackTrace}");
-
-                if (ex.InnerException != null)
-                {
-                    Debug.WriteLine($"[DB] InnerException: {ex.InnerException.Message}");
-                }
-
-                // Mostrar erro mais específico para o usuário
-                var errorMessage = ex.Message;
-                if (errorMessage.Contains("no such table"))
-                    errorMessage = "Erro no banco de dados. Reinicie o aplicativo.";
-                else if (errorMessage.Contains("constraint"))
-                    errorMessage = "Erro de dados. Verifique os valores informados.";
-
-                throw new Exception(errorMessage, ex);
+                Debug.WriteLine($"[DB] ERRO ao salvar: {ex.Message}");
+                throw new Exception("Erro ao salvar contagem no banco de dados");
             }
         }
 
@@ -152,35 +131,13 @@ namespace UpSoluctionsCounter.Services
 
             try
             {
-                Debug.WriteLine($"[DB] Excluindo contagem: {id}");
                 var result = await _database.DeleteAsync<InventoryCount>(id);
-                Debug.WriteLine($"[DB] DELETE result: {result}");
-                return result > 0;
+                return result == 1;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[DB] Erro ao excluir contagem: {ex.Message}");
+                Debug.WriteLine($"[DB] Erro ao excluir: {ex.Message}");
                 throw;
-            }
-        }
-
-        // Método para debug da estrutura da tabela (opcional)
-        public async Task DebugTableStructure()
-        {
-            try
-            {
-                Debug.WriteLine("[DB] Estrutura da tabela InventoryCount:");
-
-                // Método alternativo para verificar a estrutura
-                var sampleData = await _database.Table<InventoryCount>().FirstOrDefaultAsync();
-                if (sampleData != null)
-                {
-                    Debug.WriteLine($"[DB] Exemplo de dados: {JsonSerializer.Serialize(sampleData)}");
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[DB] Erro ao debuggar estrutura: {ex.Message}");
             }
         }
     }
