@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+            xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+            xmlns:viewmodels="clr-namespace:UpSoluctionsCounter.ViewModels"
+            x:Class="UpSoluctionsCounter.MainPage"
+            x:DataType="viewmodels:MainViewModel"
+            Title="Balanço de Produtos">
+
+    <ContentPage.BindingContext>
+        <viewmodels:MainViewModel />
+    </ContentPage.BindingContext>
+
+    <VerticalStackLayout Padding="20">
+        <Entry Placeholder="Código de Barras" Text="{Binding Code}" />
+        <Entry Placeholder="Quantidade" Keyboard="Numeric" Text="{Binding Quantity}" />
+        <Button Text="Adicionar Produto" Command="{Binding AddCommand}" />
+        <CollectionView ItemsSource="{Binding Products}" Margin="0,20,0,0">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <StackLayout Orientation="Horizontal">
+                        <Label Text="{Binding Code}" />
+                        <Label Text=" "/>
+                        <Label Text="{Binding Quantity}" FontAttributes="Bold" />
+                    </StackLayout>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+        <Button Text="Exportar Balanço" Command="{Binding ExportCommand}" BackgroundColor="Green" TextColor="White" />
+    </VerticalStackLayout>
+</ContentPage>
