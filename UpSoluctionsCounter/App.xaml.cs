@@ -1,13 +1,15 @@
-﻿namespace UpSoluctionsCounter
+﻿using Microsoft.Extensions.DependencyInjection;
+
+namespace UpSoluctionsCounter
 {
     public partial class App : Application
     {
-        public App()
+        public App(IServiceProvider serviceProvider)
         {
             InitializeComponent();
 
-            //MainPage = new AppShell();
-            MainPage = new NavigationPage(new MainPage());
+            var mainPage = serviceProvider.GetService<MainPage>();
+            MainPage = new NavigationPage(mainPage);
         }
     }
 }

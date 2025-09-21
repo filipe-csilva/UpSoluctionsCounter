@@ -1,11 +1,13 @@
-﻿namespace UpSoluctionsCounter
+﻿using UpSoluctionsCounter.ViewModels;
+
+namespace UpSoluctionsCounter
 {
     public partial class MainPage : ContentPage
     {
-        public MainPage()
+        public MainPage(MainViewModel viewModel)
         {
             InitializeComponent();
+            BindingContext = viewModel;
         }
     }
-
 }

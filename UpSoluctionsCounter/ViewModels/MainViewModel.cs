@@ -1,60 +1,267 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.ObjectModel;
 using System.Windows.Input;
 using UpSoluctionsCounter.Models;
 using UpSoluctionsCounter.Services;
+using System.Diagnostics;
+using UpSoluctionsCounter.Services.Interface;
 
 namespace UpSoluctionsCounter.ViewModels
 {
     public class MainViewModel : BindableObject
     {
+        private readonly IDatabaseService _databaseService;
         private string _code;
         private string _quantity;
+        private InventoryCount _currentCount;
+        private bool _isCounting;
 
-        public string Code
-        {
-            get => _code;
-            set { _code = value; OnPropertyChanged(); }
-        }
-
-        public string Quantity
-        {
-            get => _quantity;
-            set { _quantity = value; OnPropertyChanged(); }
-        }
-
+        public ObservableCollection<InventoryCountViewModel> InventoryCounts { get; } = new();
         public ObservableCollection<ProductItem> Products { get; } = new();
 
+        public string Code { get => _code; set { _code = value; OnPropertyChanged(); } }
+        public string Quantity { get => _quantity; set { _quantity = value; OnPropertyChanged(); } }
+        public bool IsCounting { get => _isCounting; set { _isCounting = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsNotCounting)); } }
+        public bool IsNotCounting => !IsCounting;
+
         public ICommand AddCommand => new Command(AddProduct);
-        public ICommand ExportCommand => new Command(Export);
+        public ICommand ExportCommand => new Command(async () => await Export());
+        public ICommand StartNewCountCommand => new Command(async () => await StartNewCount());
+        public ICommand SaveCountCommand => new Command(async () => await SaveCount());
+        public ICommand CancelCountCommand => new Command(CancelCount);
+        public ICommand LoadCountCommand => new Command<InventoryCountViewModel>(async (count) => await LoadCount(count));
+        public ICommand DeleteCountCommand => new Command<InventoryCountViewModel>(async (count) => await DeleteCount(count));
+
+        public MainViewModel(IDatabaseService databaseService)
+        {
+            _databaseService = databaseService;
+            InitializeAsync();
+        }
+
+        private async void InitializeAsync()
+        {
+            try
+            {
+                await LoadInventoryCounts();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[VM] Erro ao inicializar: {ex.Message}");
+                await Application.Current.MainPage.DisplayAlert("Erro", "Falha ao carregar contagens. Reinicie o aplicativo.", "OK");
+            }
+        }
+
+        private async Task LoadInventoryCounts()
+        {
+            try
+            {
+                var counts = await _databaseService.GetInventoryCountsAsync();
+
+                await Application.Current.MainPage.Dispatcher.DispatchAsync(() =>
+                {
+                    InventoryCounts.Clear();
+
+                    foreach (var count in counts)
+                    {
+                        var products = count.GetProducts();
+                        InventoryCounts.Add(new InventoryCountViewModel
+                        {
+                            Id = count.Id,
+                            Name = count.Name,
+                            CreatedDate = count.CreatedDate,
+                            ItemsCount = products.Count
+                        });
+                    }
+
+                    Debug.WriteLine($"[VM] Carregadas {InventoryCounts.Count} contagens na UI");
+                });
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[VM] Erro ao carregar contagens: {ex.Message}");
+                await Application.Current.MainPage.DisplayAlert("Erro", "Falha ao carregar contagens.", "OK");
+            }
+        }
 
         private void AddProduct()
         {
-            if (string.IsNullOrWhiteSpace(Code) || !int.TryParse(Quantity, out var qty)) return;
-
-            var existing = Products.FirstOrDefault(p => p.Code == Code);
-            if (existing != null)
+            try
             {
-                existing.Quantity += qty;
-                OnPropertyChanged(nameof(Products)); // Forçar atualização
-            }
-            else
-            {
-                Products.Add(new ProductItem { Code = Code, Quantity = qty });
-            }
+                if (string.IsNullOrWhiteSpace(Code) || !int.TryParse(Quantity, out var qty) || qty <= 0)
+                {
+                    Application.Current.MainPage.DisplayAlert("Aviso", "Código inválido ou quantidade deve ser maior que zero", "OK");
+                    return;
+                }
 
-            Code = string.Empty;
-            Quantity = string.Empty;
+                var existing = Products.FirstOrDefault(p => p.Code == Code);
+                if (existing != null)
+                {
+                    existing.Quantity += qty;
+                    Debug.WriteLine($"[VM] Produto atualizado: {Code}, Quantidade: {existing.Quantity}");
+                }
+                else
+                {
+                    Products.Add(new ProductItem { Code = Code, Quantity = qty });
+                    Debug.WriteLine($"[VM] Novo produto adicionado: {Code}, Quantidade: {qty}");
+                }
+
+                Code = string.Empty;
+                Quantity = string.Empty;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[VM] Erro ao adicionar produto: {ex.Message}");
+                Application.Current.MainPage.DisplayAlert("Erro", "Falha ao adicionar produto", "OK");
+            }
         }
 
-        private async void Export()
+        private async Task Export()
         {
-            var lines = Products.Select(p => $"{p.Code};{p.Quantity}");
-            await FileExportService.ExportToTxtAsync("balanco.txt", lines);
+            if (Products.Count == 0)
+            {
+                await Application.Current.MainPage.DisplayAlert("Aviso", "Nenhum produto para exportar", "OK");
+                return;
+            }
+
+            try
+            {
+                var lines = new List<string> { "Código;Quantidade" };
+                lines.AddRange(Products.Select(p => $"{p.Code};{p.Quantity}"));
+
+                await FileExportService.ExportToTxtAsync($"balanco_{DateTime.Now:yyyyMMdd_HHmmss}.txt", lines);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[VM] Erro ao exportar: {ex.Message}");
+                await Application.Current.MainPage.DisplayAlert("Erro", "Falha ao exportar", "OK");
+            }
+        }
+
+        private async Task StartNewCount()
+        {
+            try
+            {
+                var result = await Application.Current.MainPage.DisplayPromptAsync(
+                    "Nova Contagem",
+                    "Nome da contagem:",
+                    "Iniciar",
+                    "Cancelar",
+                    "Ex: Contagem Loja A",
+                    maxLength: 50);
+
+                if (!string.IsNullOrWhiteSpace(result))
+                {
+                    _currentCount = new InventoryCount { Name = result };
+                    Products.Clear();
+                    IsCounting = true;
+                    Debug.WriteLine($"[VM] Nova contagem iniciada: {result}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[VM] Erro ao iniciar contagem: {ex.Message}");
+                await Application.Current.MainPage.DisplayAlert("Erro", "Falha ao iniciar contagem", "OK");
+            }
+        }
+
+        private async Task SaveCount()
+        {
+            if (Products.Count == 0)
+            {
+                await Application.Current.MainPage.DisplayAlert("Aviso", "Nenhum produto adicionado à contagem.", "OK");
+                return;
+            }
+
+            try
+            {
+                Debug.WriteLine($"[VM] Salvando contagem: {_currentCount.Name}");
+                Debug.WriteLine($"[VM] Produtos na contagem: {Products.Count}");
+
+                _currentCount.SetProducts(new ObservableCollection<ProductItem>(Products));
+
+                var success = await _databaseService.SaveInventoryCountAsync(_currentCount);
+
+                if (success)
+                {
+                    await Application.Current.MainPage.DisplayAlert("✅ Sucesso", "Contagem salva com sucesso!", "OK");
+                    CancelCount();
+                    await LoadInventoryCounts();
+                }
+                else
+                {
+                    await Application.Current.MainPage.DisplayAlert("❌ Erro", "Falha ao salvar contagem", "OK");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[VM] Erro ao salvar contagem: {ex.Message}");
+                Debug.WriteLine($"[VM] Stack Trace: {ex.StackTrace}");
+                await Application.Current.MainPage.DisplayAlert("❌ Erro", ex.Message, "OK");
+            }
+        }
+
+        private void CancelCount()
+        {
+            try
+            {
+                Products.Clear();
+                _currentCount = null;
+                IsCounting = false;
+                Debug.WriteLine("[VM] Contagem cancelada");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[VM] Erro ao cancelar contagem: {ex.Message}");
+            }
+        }
+
+        private async Task LoadCount(InventoryCountViewModel countVm)
+        {
+            try
+            {
+                Debug.WriteLine($"[VM] Carregando contagem: {countVm.Name}");
+                var count = await _databaseService.GetInventoryCountAsync(countVm.Id);
+                if (count != null)
+                {
+                    Products.Clear();
+                    var products = count.GetProducts();
+                    foreach (var product in products)
+                    {
+                        Products.Add(product);
+                    }
+                    _currentCount = count;
+                    IsCounting = true;
+                    Debug.WriteLine($"[VM] Contagem carregada: {products.Count} produtos");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[VM] Erro ao carregar contagem: {ex.Message}");
+                await Application.Current.MainPage.DisplayAlert("Erro", "Falha ao carregar contagem", "OK");
+            }
+        }
+
+        private async Task DeleteCount(InventoryCountViewModel countVm)
+        {
+            try
+            {
+                var confirm = await Application.Current.MainPage.DisplayAlert(
+                    "Confirmar",
+                    $"Deseja excluir a contagem '{countVm.Name}'?",
+                    "Sim",
+                    "Não");
+
+                if (confirm)
+                {
+                    await _databaseService.DeleteInventoryCountAsync(countVm.Id);
+                    await LoadInventoryCounts();
+                    Debug.WriteLine($"[VM] Contagem excluída: {countVm.Name}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[VM] Erro ao excluir contagem: {ex.Message}");
+                await Application.Current.MainPage.DisplayAlert("Erro", "Falha ao excluir contagem", "OK");
+            }
         }
     }
 }

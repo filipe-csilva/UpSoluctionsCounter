@@ -2,29 +2,153 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
             xmlns:viewmodels="clr-namespace:UpSoluctionsCounter.ViewModels"
+            xmlns:models="clr-namespace:UpSoluctionsCounter.Models"
             x:Class="UpSoluctionsCounter.MainPage"
             x:DataType="viewmodels:MainViewModel"
             Title="Balanço de Produtos">
 
-    <ContentPage.BindingContext>
-        <viewmodels:MainViewModel />
-    </ContentPage.BindingContext>
+    <Grid RowDefinitions="Auto,*" ColumnDefinitions="*">
 
-    <VerticalStackLayout Padding="20">
-        <Entry Placeholder="Código de Barras" Text="{Binding Code}" />
-        <Entry Placeholder="Quantidade" Keyboard="Numeric" Text="{Binding Quantity}" />
-        <Button Text="Adicionar Produto" Command="{Binding AddCommand}" />
-        <CollectionView ItemsSource="{Binding Products}" Margin="0,20,0,0">
-            <CollectionView.ItemTemplate>
-                <DataTemplate>
-                    <StackLayout Orientation="Horizontal">
-                        <Label Text="{Binding Code}" />
-                        <Label Text=" "/>
-                        <Label Text="{Binding Quantity}" FontAttributes="Bold" />
-                    </StackLayout>
-                </DataTemplate>
-            </CollectionView.ItemTemplate>
-        </CollectionView>
-        <Button Text="Exportar Balanço" Command="{Binding ExportCommand}" BackgroundColor="Green" TextColor="White" />
-    </VerticalStackLayout>
+        <!-- Área de Contagem Ativa -->
+        <StackLayout Grid.Row="0" IsVisible="{Binding IsCounting}" 
+                    Margin="10" Spacing="15" BackgroundColor="#f8f9fa" Padding="15">
+
+            <Label Text="📋 Contagem em Andamento" 
+                  FontSize="18" FontAttributes="Bold" 
+                  HorizontalOptions="Center" TextColor="#2c3e50"/>
+
+            <!-- Entrada de dados -->
+            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="10" RowSpacing="10">
+                <Label Grid.Row="0" Grid.Column="0" Text="Código de Barras:" 
+                      FontSize="14" TextColor="#34495e"/>
+                <Label Grid.Row="0" Grid.Column="1" Text="Quantidade:" 
+                      FontSize="14" TextColor="#34495e"/>
+
+                <Entry Grid.Row="1" Grid.Column="0" Placeholder="Ex: 7896213001292" 
+                      Text="{Binding Code}" Keyboard="Numeric"
+                      BackgroundColor="White" TextColor="#2c3e50"/>
+                <Entry Grid.Row="1" Grid.Column="1" Placeholder="Ex: 50" 
+                      Text="{Binding Quantity}" Keyboard="Numeric"
+                      BackgroundColor="White" TextColor="#2c3e50"/>
+            </Grid>
+
+            <!-- Botões de ação -->
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                <Button Grid.Column="0" Text="➕ Adicionar" Command="{Binding AddCommand}" 
+                       BackgroundColor="#27ae60" TextColor="White" FontAttributes="Bold"/>
+                <Button Grid.Column="1" Text="📤 Exportar" Command="{Binding ExportCommand}" 
+                       BackgroundColor="#3498db" TextColor="White" FontAttributes="Bold"/>
+            </Grid>
+
+            <!-- Botões de controle -->
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                <Button Grid.Column="0" Text="💾 Salvar Contagem" Command="{Binding SaveCountCommand}" 
+                       BackgroundColor="#2ecc71" TextColor="White" FontAttributes="Bold"/>
+                <Button Grid.Column="1" Text="❌ Cancelar" Command="{Binding CancelCountCommand}" 
+                       BackgroundColor="#e74c3c" TextColor="White" FontAttributes="Bold"/>
+            </Grid>
+        </StackLayout>
+
+        <!-- Lista de Produtos da Contagem Atual -->
+        <StackLayout Grid.Row="1" IsVisible="{Binding IsCounting}" Spacing="10" Margin="10">
+            <Label Text="📦 Produtos Contados" 
+                  FontSize="16" FontAttributes="Bold" 
+                  HorizontalOptions="Center" TextColor="#2c3e50"/>
+
+            <Frame BackgroundColor="White" Padding="0" HasShadow="True">
+                <CollectionView ItemsSource="{Binding Products}" HeightRequest="250">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="models:ProductItem">
+                            <Frame Margin="5" BackgroundColor="#ecf0f1" Padding="10">
+                                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto">
+                                    <Label Grid.Column="0" Text="{Binding Code}" 
+                                          FontSize="14" TextColor="#2c3e50" 
+                                          VerticalOptions="Center"/>
+                                    <Label Grid.Column="1" Text="{Binding Quantity, StringFormat='Qtd: {0}'}" 
+                                          FontSize="14" FontAttributes="Bold" 
+                                          TextColor="#e74c3c" VerticalOptions="Center"/>
+                                </Grid>
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+
+                    <CollectionView.EmptyView>
+                        <StackLayout HorizontalOptions="Center" VerticalOptions="Center" Padding="20">
+                            <Label Text="📝" FontSize="24" HorizontalOptions="Center"/>
+                            <Label Text="Nenhum produto adicionado" 
+                                  FontSize="14" TextColor="#7f8c8d" 
+                                  HorizontalOptions="Center"/>
+                        </StackLayout>
+                    </CollectionView.EmptyView>
+                </CollectionView>
+            </Frame>
+        </StackLayout>
+
+        <!-- Lista de Contagens Salvas -->
+        <StackLayout Grid.Row="1" IsVisible="{Binding IsNotCounting}" Spacing="15" Margin="10">
+            <Button Text="🆕 Nova Contagem" Command="{Binding StartNewCountCommand}" 
+                   BackgroundColor="#27ae60" TextColor="White" FontAttributes="Bold"
+                   Margin="0,0,0,10" HeightRequest="50"/>
+
+            <Label Text="📚 Contagens Salvas" 
+                  FontSize="16" FontAttributes="Bold" 
+                  HorizontalOptions="Center" TextColor="#2c3e50"/>
+
+            <Frame BackgroundColor="White" Padding="0" HasShadow="True">
+                <CollectionView ItemsSource="{Binding InventoryCounts}" HeightRequest="400">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="viewmodels:InventoryCountViewModel">
+                            <SwipeView>
+                                <SwipeView.RightItems>
+                                    <SwipeItem Text="🗑️" BackgroundColor="#e74c3c" 
+                                              Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:MainViewModel}}, Path=DeleteCountCommand}" 
+                                              CommandParameter="{Binding .}"/>
+                                </SwipeView.RightItems>
+
+                                <Frame Margin="5" BackgroundColor="#f8f9fa" Padding="15">
+                                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
+                                        <!-- Nome da contagem -->
+                                        <Label Grid.Row="0" Grid.Column="0" Text="{Binding Name}" 
+                                              FontSize="16" FontAttributes="Bold" TextColor="#2c3e50"/>
+
+                                        <!-- Data de criação -->
+                                        <Label Grid.Row="1" Grid.Column="0" 
+                                              Text="{Binding CreatedDate, StringFormat='📅 {0:dd/MM/yy HH:mm}'}" 
+                                              FontSize="12" TextColor="#7f8c8d"/>
+
+                                        <!-- Quantidade de itens -->
+                                        <Label Grid.Row="2" Grid.Column="0" 
+                                              Text="{Binding ItemsCount, StringFormat='📦 {0} itens'}" 
+                                              FontSize="12" TextColor="#7f8c8d"/>
+
+                                        <!-- Botão Abrir -->
+                                        <Button Grid.Row="0" Grid.Column="1" Grid.RowSpan="3" 
+                                               Text="🔓 Abrir" 
+                                               Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:MainViewModel}}, Path=LoadCountCommand}" 
+                                               CommandParameter="{Binding .}"
+                                               BackgroundColor="#3498db" TextColor="White" 
+                                               VerticalOptions="Center" HorizontalOptions="End"
+                                               WidthRequest="80" HeightRequest="40"/>
+                                    </Grid>
+                                </Frame>
+                            </SwipeView>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+
+                    <CollectionView.EmptyView>
+                        <StackLayout HorizontalOptions="Center" VerticalOptions="Center" Padding="20">
+                            <Label Text="📂" FontSize="24" HorizontalOptions="Center"/>
+                            <Label Text="Nenhuma contagem salva" 
+                                  FontSize="14" TextColor="#7f8c8d" 
+                                  HorizontalOptions="Center"/>
+                            <Label Text="Clique em 'Nova Contagem' para começar" 
+                                  FontSize="12" TextColor="#bdc3c7" 
+                                  HorizontalOptions="Center"/>
+                        </StackLayout>
+                    </CollectionView.EmptyView>
+                </CollectionView>
+            </Frame>
+        </StackLayout>
+
+    </Grid>
 </ContentPage>
