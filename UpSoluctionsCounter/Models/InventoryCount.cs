@@ -1,8 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using SQLite;
 using System.Collections.ObjectModel;
 using System.Text.Json;
-using SQLite;
 
 namespace UpSoluctionsCounter.Models
 {
@@ -38,7 +36,8 @@ namespace UpSoluctionsCounter.Models
 
         public void SetProducts(ObservableCollection<ProductItem> products)
         {
-            ProductsJson = JsonSerializer.Serialize(products);
+            var productList = products.ToList();
+            ProductsJson = JsonSerializer.Serialize(productList);
         }
     }
 }

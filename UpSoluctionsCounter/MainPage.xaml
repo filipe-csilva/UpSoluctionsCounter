@@ -5,7 +5,7 @@
             xmlns:models="clr-namespace:UpSoluctionsCounter.Models"
             x:Class="UpSoluctionsCounter.MainPage"
             x:DataType="viewmodels:MainViewModel"
-            Title="Balanço de Produtos">
+            Title="UpSoluctions Counter">
 
     <Grid RowDefinitions="Auto,*" ColumnDefinitions="*">
 
@@ -18,35 +18,40 @@
                   HorizontalOptions="Center" TextColor="#2c3e50"/>
 
             <!-- Entrada de dados -->
-            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="10" RowSpacing="10">
+            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="10" RowSpacing="10">
                 <Label Grid.Row="0" Grid.Column="0" Text="Código de Barras:" 
                       FontSize="14" TextColor="#34495e"/>
                 <Label Grid.Row="0" Grid.Column="1" Text="Quantidade:" 
                       FontSize="14" TextColor="#34495e"/>
 
+                <!-- Campo de código SEM botão de câmera -->
                 <Entry Grid.Row="1" Grid.Column="0" Placeholder="Ex: 7896213001292" 
                       Text="{Binding Code}" Keyboard="Numeric"
                       BackgroundColor="White" TextColor="#2c3e50"/>
-                <Entry Grid.Row="1" Grid.Column="1" Placeholder="Ex: 50" 
+
+                <Entry Grid.Row="1" Grid.Column="1" x:Name="QuantityEntry" Placeholder="Ex: 50" 
                       Text="{Binding Quantity}" Keyboard="Numeric"
                       BackgroundColor="White" TextColor="#2c3e50"/>
-            </Grid>
 
-            <!-- Botões de ação -->
-            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
-                <Button Grid.Column="0" Text="➕ Adicionar" Command="{Binding AddCommand}" 
+                <!-- Botões de ação -->
+                <Button Grid.Row="2" Grid.Column="0" Text="➕  Adicionar" Command="{Binding AddCommand}" 
                        BackgroundColor="#27ae60" TextColor="White" FontAttributes="Bold"/>
-                <Button Grid.Column="1" Text="📤 Exportar" Command="{Binding ExportCommand}" 
+                <Button Grid.Row="2" Grid.Column="1" Text="📷  Escanear" Command="{Binding ScanQrCodeCommand}" 
                        BackgroundColor="#3498db" TextColor="White" FontAttributes="Bold"/>
             </Grid>
 
-            <!-- Botões de controle -->
+            <!-- Botões de controle - CANCELAR no lugar de EXPORTAR -->
             <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
-                <Button Grid.Column="0" Text="💾 Salvar Contagem" Command="{Binding SaveCountCommand}" 
+                <Button Grid.Column="0" Text="💾  Salvar Contagem" Command="{Binding SaveCountCommand}" 
                        BackgroundColor="#2ecc71" TextColor="White" FontAttributes="Bold"/>
-                <Button Grid.Column="1" Text="❌ Cancelar" Command="{Binding CancelCountCommand}" 
+                <Button Grid.Column="1" Text="❌  Cancelar" Command="{Binding CancelCountCommand}" 
                        BackgroundColor="#e74c3c" TextColor="White" FontAttributes="Bold"/>
             </Grid>
+
+            <!-- Botão de EXPORTAR na parte inferior -->
+            <Button Text="📤  Exportar" Command="{Binding ExportCommand}" 
+                   BackgroundColor="#3498FF" TextColor="White" FontAttributes="Bold"
+                   Margin="0,10,0,0" HeightRequest="45"/>
         </StackLayout>
 
         <!-- Lista de Produtos da Contagem Atual -->
@@ -65,7 +70,6 @@
                                           FontSize="14" TextColor="#2c3e50" 
                                           VerticalOptions="Center"/>
 
-                                    <!-- CORREÇÃO: Um único Grid para Qtd e valor -->
                                     <Grid Grid.Column="1" ColumnDefinitions="Auto,Auto" ColumnSpacing="5">
                                         <Label Grid.Column="0" Text="Qtd:" 
                                               FontSize="14" TextColor="Black" 

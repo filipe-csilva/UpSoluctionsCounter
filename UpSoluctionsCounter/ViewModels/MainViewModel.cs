@@ -11,6 +11,7 @@ namespace UpSoluctionsCounter.ViewModels
     public class MainViewModel : BindableObject
     {
         private readonly IDatabaseService _databaseService;
+        private readonly IQrCodeService _qrCodeService;
         private string _code;
         private string _quantity;
         private InventoryCount _currentCount;
@@ -31,10 +32,12 @@ namespace UpSoluctionsCounter.ViewModels
         public ICommand CancelCountCommand => new Command(CancelCount);
         public ICommand LoadCountCommand => new Command<InventoryCountViewModel>(async (count) => await LoadCount(count));
         public ICommand DeleteCountCommand => new Command<InventoryCountViewModel>(async (count) => await DeleteCount(count));
+        public ICommand ScanQrCodeCommand => new Command(async () => await ScanQrCode());
 
-        public MainViewModel(IDatabaseService databaseService)
+        public MainViewModel(IDatabaseService databaseService, IQrCodeService qrCodeService)
         {
             _databaseService = databaseService;
+            _qrCodeService = qrCodeService;
             InitializeAsync();
         }
 
@@ -49,6 +52,35 @@ namespace UpSoluctionsCounter.ViewModels
                 Debug.WriteLine($"[VM] Erro ao inicializar: {ex.Message}");
                 await Application.Current.MainPage.DisplayAlert("Erro", "Falha ao carregar contagens. Reinicie o aplicativo.", "OK");
             }
+        }
+
+        private async Task ScanQrCode()
+        {
+            try
+            {
+                var scanResult = await _qrCodeService.ScanQrCodeAsync();
+
+                if (!string.IsNullOrEmpty(scanResult))
+                {
+                    Code = scanResult;
+                    // Foca automaticamente no campo de quantidade
+                    await Task.Delay(500);
+                    OnFocusQuantityRequested?.Invoke();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[QR] Erro ao escanear: {ex.Message}");
+                await Application.Current.MainPage.DisplayAlert("Erro", "Falha ao escanear QR Code", "OK");
+            }
+        }
+
+        // Adicione esta propriedade para o foco
+        public event Action OnFocusQuantityRequested;
+
+        public void RequestFocusOnQuantity()
+        {
+            OnFocusQuantityRequested?.Invoke();
         }
 
         private async Task LoadInventoryCounts()
