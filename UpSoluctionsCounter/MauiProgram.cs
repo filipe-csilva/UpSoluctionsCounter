@@ -1,4 +1,5 @@
-﻿using UpSoluctionsCounter.Services;
+﻿using Microsoft.Extensions.Logging;
+using UpSoluctionsCounter.Services;
 using UpSoluctionsCounter.Services.Interface;
 using UpSoluctionsCounter.ViewModels;
 using ZXing.Net.Maui.Controls;
@@ -12,7 +13,7 @@ namespace UpSoluctionsCounter
             var builder = MauiApp.CreateBuilder();
             builder
                 .UseMauiApp<App>()
-                .UseBarcodeReader() // Adicionar suporte a QR Code
+                .UseBarcodeReader() // Configuração do ZXing
                 .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");

@@ -7,7 +7,7 @@
             x:DataType="viewmodels:MainViewModel"
             Title="UpSoluctions Counter">
 
-    <Grid RowDefinitions="Auto,*" ColumnDefinitions="*">
+    <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="*">
 
         <!-- Área de Contagem Ativa -->
         <StackLayout Grid.Row="0" IsVisible="{Binding IsCounting}" 
@@ -36,7 +36,7 @@
                 <!-- Botões de ação -->
                 <Button Grid.Row="2" Grid.Column="0" Text="➕  Adicionar" Command="{Binding AddCommand}" 
                        BackgroundColor="#27ae60" TextColor="White" FontAttributes="Bold"/>
-                <Button Grid.Row="2" Grid.Column="1" Text="📷  Escanear" Command="{Binding ScanQrCodeCommand}" 
+                <Button Grid.Row="2" Grid.Column="1" Text="📷  Escanear Código" Command="{Binding ScanBarcodeCommand}" 
                        BackgroundColor="#3498db" TextColor="White" FontAttributes="Bold"/>
             </Grid>
 
@@ -159,6 +159,26 @@
                     </CollectionView.EmptyView>
                 </CollectionView>
             </Frame>
+        </StackLayout>
+
+        <!-- LOGO NA TELA DE CONTAGEM ATIVA -->
+        <StackLayout Grid.Row="2" HorizontalOptions="Center" VerticalOptions="End" 
+            Margin="0,20,0,10" Spacing="5" IsVisible="{Binding IsCounting}">
+            <Image Source="logo.png" 
+                   HeightRequest="84" 
+                   WidthRequest="280"
+                   Aspect="AspectFit"
+                   HorizontalOptions="Center"/>
+        </StackLayout>
+
+        <!-- LOGO NA TELA PRINCIPAL (SEM CONTAGEM ATIVA) -->
+        <StackLayout Grid.Row="2" HorizontalOptions="Center" VerticalOptions="End" 
+            Margin="0,20,0,10" Spacing="5" IsVisible="{Binding IsNotCounting}">
+            <Image Source="logo.png" 
+                   HeightRequest="84" 
+                   WidthRequest="280"
+                   Aspect="AspectFit"
+                   HorizontalOptions="Center"/>
         </StackLayout>
 
     </Grid>

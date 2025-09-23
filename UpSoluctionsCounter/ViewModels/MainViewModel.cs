@@ -32,7 +32,9 @@ namespace UpSoluctionsCounter.ViewModels
         public ICommand CancelCountCommand => new Command(CancelCount);
         public ICommand LoadCountCommand => new Command<InventoryCountViewModel>(async (count) => await LoadCount(count));
         public ICommand DeleteCountCommand => new Command<InventoryCountViewModel>(async (count) => await DeleteCount(count));
-        public ICommand ScanQrCodeCommand => new Command(async () => await ScanQrCode());
+
+        // ALTERADO: De ScanQrCodeCommand para ScanBarcodeCommand
+        public ICommand ScanBarcodeCommand => new Command(async () => await ScanBarcode());
 
         public MainViewModel(IDatabaseService databaseService, IQrCodeService qrCodeService)
         {
@@ -54,25 +56,46 @@ namespace UpSoluctionsCounter.ViewModels
             }
         }
 
-        private async Task ScanQrCode()
+        // ALTERADO: Método para escanear código de barras
+        private async Task ScanBarcode()
         {
             try
             {
-                var scanResult = await _qrCodeService.ScanQrCodeAsync();
+                System.Diagnostics.Debug.WriteLine("[VM] Iniciando escaneamento...");
+
+                var scanResult = await _qrCodeService.ScanBarcodeAsync();
+
+                System.Diagnostics.Debug.WriteLine($"[VM] Resultado do scan: {scanResult}");
 
                 if (!string.IsNullOrEmpty(scanResult))
                 {
-                    Code = scanResult;
-                    // Foca automaticamente no campo de quantidade
-                    await Task.Delay(500);
-                    OnFocusQuantityRequested?.Invoke();
+                    // Atualizar na thread UI
+                    await MainThread.InvokeOnMainThreadAsync(() =>
+                    {
+                        Code = scanResult.Trim();
+                        System.Diagnostics.Debug.WriteLine($"[VM] Código definido: {Code}");
+                    });
+
+                    // Focar no campo de quantidade após um pequeno delay
+                    await Task.Delay(800);
+                    RequestFocusOnQuantity();
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("[VM] Scan cancelado ou sem resultado");
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[QR] Erro ao escanear: {ex.Message}");
-                await Application.Current.MainPage.DisplayAlert("Erro", "Falha ao escanear QR Code", "OK");
+                System.Diagnostics.Debug.WriteLine($"[VM] Erro no scan: {ex.Message}");
+                await Application.Current.MainPage.DisplayAlert("Erro", "Falha ao escanear código", "OK");
             }
+        }
+
+        // Mantenha o método antigo para referência (opcional)
+        private async Task ScanQrCode()
+        {
+            await ScanBarcode(); // Redireciona para o novo método
         }
 
         // Adicione esta propriedade para o foco

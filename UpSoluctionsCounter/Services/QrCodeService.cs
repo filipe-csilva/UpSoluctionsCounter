@@ -1,81 +1,48 @@
 ﻿using UpSoluctionsCounter.Services.Interface;
 using ZXing.Net.Maui;
-using Microsoft.Maui.Controls;
 
 namespace UpSoluctionsCounter.Services
 {
     public class QrCodeService : IQrCodeService
     {
-        public async Task<string> ScanQrCodeAsync()
+        public async Task<string> ScanBarcodeAsync()
         {
             try
             {
-                // Verificar e solicitar permissão da câmera
-                if (!HasCameraPermission())
+                // Verificar permissão da câmera
+                var status = await Permissions.CheckStatusAsync<Permissions.Camera>();
+                if (status != PermissionStatus.Granted)
                 {
-                    var granted = await RequestCameraPermissionAsync();
-                    if (!granted)
+                    status = await Permissions.RequestAsync<Permissions.Camera>();
+                    if (status != PermissionStatus.Granted)
                     {
-                        await Application.Current.MainPage.DisplayAlert(
-                            "Permissão",
-                            "É necessária permissão da câmera para escanear QR Codes",
-                            "OK");
                         return null;
                     }
                 }
 
-                // Configurar opções do leitor
-                var options = new BarcodeReaderOptions
-                {
-                    Formats = BarcodeFormats.All,
-                    AutoRotate = true,
-                    Multiple = false
-                };
+                // Criar a página de scanner usando a abordagem mais simples
+                var scannerPage = new BarcodeScanPage();
 
-                // Criar a página do leitor
-                var barcodeReader = new ZXing.Net.Maui.Controls.CameraBarcodeReaderView
+                // Navegar para a página de scanner
+                if (Application.Current?.MainPage != null)
                 {
-                    Options = options,
-                    IsDetecting = true
-                };
-
-                // Criar página customizada para o scanner
-                var scanPage = new ContentPage
-                {
-                    Content = barcodeReader,
-                    Title = "Escanear QR Code"
-                };
-
-                // Aguardar o resultado
-                string result = null;
-                barcodeReader.BarcodesDetected += (sender, e) =>
-                {
-                    var first = e.Results.FirstOrDefault();
-                    if (first != null)
-                    {
-                        result = first.Value;
-                        Application.Current.MainPage.Navigation.PopAsync();
-                    }
-                };
-
-                // Navegar para a página do scanner
-                await Application.Current.MainPage.Navigation.PushAsync(scanPage);
-
-                // Aguardar até ter resultado ou página fechar
-                while (Application.Current.MainPage.Navigation.NavigationStack.Contains(scanPage))
-                {
-                    await Task.Delay(100);
-                    if (result != null) break;
+                    await Application.Current.MainPage.Navigation.PushModalAsync(scannerPage);
                 }
 
+                // Aguardar o resultado
+                var result = await scannerPage.GetResultAsync();
                 return result;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Erro ao escanear QR Code: {ex.Message}");
-                await Application.Current.MainPage.DisplayAlert("Erro", "Falha ao acessar a câmera", "OK");
+                System.Diagnostics.Debug.WriteLine($"[SCAN] Erro: {ex.Message}");
                 return null;
             }
+        }
+
+        public async Task<string> ScanQrCodeAsync()
+        {
+            return await ScanBarcodeAsync();
         }
 
         public bool HasCameraPermission()
@@ -92,9 +59,97 @@ namespace UpSoluctionsCounter.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Erro ao solicitar permissão: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Erro permissão: {ex.Message}");
                 return false;
             }
+        }
+    }
+
+    // Página de scanner customizada
+    public class BarcodeScanPage : ContentPage
+    {
+        private TaskCompletionSource<string> _tcs;
+        private ZXing.Net.Maui.Controls.CameraBarcodeReaderView _cameraView;
+
+        public BarcodeScanPage()
+        {
+            _tcs = new TaskCompletionSource<string>();
+            SetupUI();
+        }
+
+        private void SetupUI()
+        {
+            // Configurar a camera view
+            _cameraView = new ZXing.Net.Maui.Controls.CameraBarcodeReaderView
+            {
+                Options = new BarcodeReaderOptions
+                {
+                    Formats = BarcodeFormats.All,
+                    AutoRotate = true,
+                    Multiple = false
+                },
+                IsDetecting = true,
+                HeightRequest = 400
+            };
+
+            _cameraView.BarcodesDetected += OnBarcodesDetected;
+
+            var cancelButton = new Button
+            {
+                Text = "Cancelar",
+                BackgroundColor = Colors.Red,
+                TextColor = Colors.White,
+                Margin = new Thickness(20),
+                HeightRequest = 50
+            };
+            cancelButton.Clicked += OnCancelClicked;
+
+            Content = new VerticalStackLayout
+            {
+                Children = {
+                    new Label {
+                        Text = "Aponte para o código de barras",
+                        FontSize = 18,
+                        TextColor = Colors.White,
+                        HorizontalOptions = LayoutOptions.Center,
+                        Margin = new Thickness(0, 20, 0, 10)
+                    },
+                    _cameraView,
+                    cancelButton
+                },
+                BackgroundColor = Colors.Black
+            };
+        }
+
+        private void OnBarcodesDetected(object sender, ZXing.Net.Maui.BarcodeDetectionEventArgs e)
+        {
+            if (e.Results != null && e.Results.Length > 0)
+            {
+                var barcode = e.Results[0].Value;
+                Device.BeginInvokeOnMainThread(async () =>
+                {
+                    _tcs.TrySetResult(barcode);
+                    await Navigation.PopModalAsync();
+                });
+            }
+        }
+
+        private async void OnCancelClicked(object sender, EventArgs e)
+        {
+            _tcs.TrySetResult(null);
+            await Navigation.PopModalAsync();
+        }
+
+        public Task<string> GetResultAsync()
+        {
+            return _tcs.Task;
+        }
+
+        protected override void OnDisappearing()
+        {
+            base.OnDisappearing();
+            _cameraView.BarcodesDetected -= OnBarcodesDetected;
+            _cameraView.IsDetecting = false;
         }
     }
 }

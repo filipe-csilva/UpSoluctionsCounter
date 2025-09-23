@@ -2,7 +2,8 @@
 {
     public interface IQrCodeService
     {
-        Task<string> ScanQrCodeAsync();
+        Task<string> ScanBarcodeAsync(); // Novo método específico
+        Task<string> ScanQrCodeAsync(); // Mantido para compatibilidade
         bool HasCameraPermission();
         Task<bool> RequestCameraPermissionAsync();
     }
